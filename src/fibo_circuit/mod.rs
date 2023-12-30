@@ -23,7 +23,8 @@ impl<F: FieldExt> Circuit<F> for FiboCircuit<F> {
         let col_a = meta.advice_column();
         let col_b = meta.advice_column();
         let col_c = meta.advice_column();
-        FiboChip::configure(meta, [col_a, col_b, col_c])
+        let instance = meta.instance_column();
+        FiboChip::configure(meta, [col_a, col_b, col_c], instance)
     }
 
     fn synthesize(
@@ -33,13 +34,16 @@ impl<F: FieldExt> Circuit<F> for FiboCircuit<F> {
     ) -> Result<(), Error> {
         let chip: FiboChip<F> = FiboChip::construct(config);
 
-        let (_, mut prev_b, mut prev_c) = chip
+        let (a, mut prev_b, mut prev_c) = chip
             .assign_first_row(
                 layouter.namespace(|| "First Row Assignment"),
                 self.a,
                 self.b,
             )
             .unwrap();
+
+        chip.expose_public(layouter.namespace(|| "private a"), &a, 0)?;
+        chip.expose_public(layouter.namespace(|| "private b"), &prev_b, 1)?;
 
         for i in 3..10 {
             let c = chip
@@ -53,6 +57,8 @@ impl<F: FieldExt> Circuit<F> for FiboCircuit<F> {
             prev_b = prev_c;
             prev_c = c;
         }
+
+        chip.expose_public(layouter.namespace(|| "out"), &prev_c, 2)?;
 
         Ok(())
     }

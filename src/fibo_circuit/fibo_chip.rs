@@ -8,6 +8,7 @@ use std::marker::PhantomData;
 pub struct FiboConfig {
     pub advice: [Column<Advice>; 3],
     pub selector: Selector,
+    pub instance: Column<Instance>,
 }
 
 pub struct FiboChip<F: FieldExt> {
@@ -25,7 +26,11 @@ impl<F: FieldExt> FiboChip<F> {
             _marker: PhantomData,
         }
     }
-    pub fn configure(meta: &mut ConstraintSystem<F>, advice: [Column<Advice>; 3]) -> FiboConfig {
+    pub fn configure(
+        meta: &mut ConstraintSystem<F>,
+        advice: [Column<Advice>; 3],
+        instance: Column<Instance>,
+    ) -> FiboConfig {
         let col_a = advice[0];
         let col_b = advice[1];
         let col_c = advice[2];
@@ -34,6 +39,7 @@ impl<F: FieldExt> FiboChip<F> {
         meta.enable_equality(col_a);
         meta.enable_equality(col_b);
         meta.enable_equality(col_c);
+        meta.enable_equality(instance);
 
         ///
         /// col_a  | col_b  | col_c | selector
@@ -49,6 +55,7 @@ impl<F: FieldExt> FiboChip<F> {
         FiboConfig {
             advice: [col_a, col_b, col_c],
             selector,
+            instance,
         }
     }
 
@@ -141,5 +148,14 @@ impl<F: FieldExt> FiboChip<F> {
                 Ok(cell_c)
             },
         )
+    }
+
+    pub fn expose_public(
+        &self,
+        mut layouter: impl Layouter<F>,
+        cell: &ACell<F>,
+        row: usize,
+    ) -> Result<(), Error> {
+        layouter.constrain_instance(cell.0.cell(), self.config.instance, row)
     }
 }

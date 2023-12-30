@@ -9,15 +9,20 @@ fn main() {
     let k = 4;
     let a = Fp::from(1);
     let b = Fp::from(1);
+    let out = Fp::from(55);
 
     let circuit = FiboCircuit {
         a: Some(a),
         b: Some(b),
     };
 
-    println!("Calculating the proof...");
-    let prover = MockProver::run(k, &circuit, vec![]).unwrap();
+    let public_input = vec![a, b, out];
 
+    println!("Calculating the proof...");
+    let prover = MockProver::run(k, &circuit, vec![public_input.clone()]).unwrap();
+
+    println!("Verifing proof...");
     prover.assert_satisfied();
-    println!("The proof is valid!");
+
+    println!("Proof is verified!");
 }
