@@ -3,9 +3,9 @@ mod fibo_chip;
 pub mod fibo_circuit {
     use crate::fibo_circuit::fibo_chip::{FiboChip, FiboConfig};
     use halo2_proofs::arithmetic::FieldExt;
-    use halo2_proofs::circuit::{Layouter, SimpleFloorPlanner};
-    use halo2_proofs::plonk::{Circuit, ConstraintSystem};
-    use std::io::Error;
+    use halo2_proofs::circuit::{AssignedCell, Layouter, SimpleFloorPlanner};
+    use halo2_proofs::pasta::Fp;
+    use halo2_proofs::plonk::{Circuit, ConstraintSystem, Error};
 
     #[derive(Default)]
     struct _Circuit<F: FieldExt> {
@@ -33,7 +33,11 @@ pub mod fibo_circuit {
             config: Self::Config,
             layouter: impl Layouter<F>,
         ) -> Result<(), Error> {
-            let chip = FiboChip::construct(config);
+            let chip: FiboChip<F> = FiboChip::construct(config);
+
+            let (a, b, c) = chip.assign_first_row(layouter, self.a, self.b).unwrap();
+
+            Ok(())
         }
     }
 }

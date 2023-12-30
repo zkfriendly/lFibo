@@ -1,5 +1,5 @@
-
-use halo2_proofs::plonk::{Advice, Column};
+use halo2_proofs::circuit::{AssignedCell, Layouter};
+use halo2_proofs::plonk::{Advice, Column, Error};
 use halo2_proofs::poly::Rotation;
 use halo2_proofs::{arithmetic::FieldExt, plonk::*};
 use std::marker::PhantomData;
@@ -14,6 +14,9 @@ pub struct FiboChip<F: FieldExt> {
     config: FiboConfig,
     _marker: std::marker::PhantomData<F>,
 }
+
+#[derive(Debug, Clone)]
+pub struct ACell<F: FieldExt>(AssignedCell<F, F>);
 
 impl<F: FieldExt> FiboChip<F> {
     pub fn construct(config: FiboConfig) -> Self {
@@ -48,4 +51,51 @@ impl<F: FieldExt> FiboChip<F> {
             selector,
         }
     }
+
+    pub fn assign_first_row(
+        &self,
+        mut layouter: impl Layouter<F>,
+        a: Option<F>,
+        b: Option<F>,
+    ) -> Result<(ACell<F>, ACell<F>, ACell<F>), Error> {
+        layouter.assign_region(
+            || "first row",
+            |mut region| {
+                self.config.selector.enable(&mut region, 0)?;
+
+                let cell_a = region
+                    .assign_advice(
+                        || "cell_a",
+                        self.config.advice[0],
+                        0,
+                        || a.ok_or(Error::Synthesis),
+                    )
+                    .map(ACell)?;
+
+                let cell_b = region
+                    .assign_advice(
+                        || "cell_b",
+                        self.config.advice[1],
+                        0,
+                        || b.ok_or(Error::Synthesis),
+                    )
+                    .map(ACell)?;
+                let c = a.and_then(|a| b.map(|b| a + b));
+                let cell_c = region
+                    .assign_advice(
+                        || "cell_c",
+                        self.config.advice[2],
+                        0,
+                        || c.ok_or(Error::Synthesis),
+                    )
+                    .map(ACell)?;
+
+                Ok((cell_a, cell_b, cell_c))
+            },
+        )
+    }
+
+    // pub fn assign_row(&self, &mut layouter: impl Layouter<F>, prev_b: &ACell<F>, prev_c: &ACell<F>) -> Result<ACell<F>, Err()> {
+    //
+    // }
 }
