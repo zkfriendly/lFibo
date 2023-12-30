@@ -95,7 +95,51 @@ impl<F: FieldExt> FiboChip<F> {
         )
     }
 
-    // pub fn assign_row(&self, &mut layouter: impl Layouter<F>, prev_b: &ACell<F>, prev_c: &ACell<F>) -> Result<ACell<F>, Err()> {
-    //
-    // }
+    pub fn assign_row(
+        &self,
+        mut layouter: impl Layouter<F>,
+        prev_b: &ACell<F>,
+        prev_c: &ACell<F>,
+    ) -> Result<ACell<F>, Error> {
+        layouter.assign_region(
+            || "other rows",
+            |mut region| {
+                self.config.selector.enable(&mut region, 0)?;
+
+                region
+                    .assign_advice(
+                        || "cell_n_a",
+                        self.config.advice[0],
+                        0,
+                        || prev_b.0.value().copied().ok_or(Error::Synthesis),
+                    )
+                    .map(ACell)?;
+
+                region
+                    .assign_advice(
+                        || "cell_n_b",
+                        self.config.advice[1],
+                        0,
+                        || prev_c.0.value().copied().ok_or(Error::Synthesis),
+                    )
+                    .map(ACell)?;
+
+                let c = prev_b
+                    .0
+                    .value()
+                    .and_then(|a| prev_c.0.value().map(|b| *a + *b));
+
+                let cell_c = region
+                    .assign_advice(
+                        || "cell_n_c",
+                        self.config.advice[2],
+                        0,
+                        || c.ok_or(Error::Synthesis),
+                    )
+                    .map(ACell)?;
+
+                Ok(cell_c)
+            },
+        )
+    }
 }
